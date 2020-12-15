@@ -51,6 +51,10 @@ func (c *Caps) GetStructure(index uint) *Structure {
 	return (*Structure)(C.gst_caps_get_structure(c.g(), C.guint(index)))
 }
 
+func (c *Caps) GetFeatures(index uint) *CapsFeatures {
+	return (*CapsFeatures)(C.gst_caps_get_features(c.g(), C.guint(index)))
+}
+
 func NewCapsAny() *Caps {
 	return (*Caps)(C.gst_caps_new_any())
 }
