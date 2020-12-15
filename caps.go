@@ -47,8 +47,8 @@ func (c *Caps) String() string {
 	return C.GoString(s)
 }
 
-func (c *Caps) GetStructure(index int) *Structure {
-	return (*Structure)(C.gst_caps_get_structure(c.g(), index))
+func (c *Caps) GetStructure(index uint) *Structure {
+	return (*Structure)(C.gst_caps_get_structure(c.g(), C.guint(index)))
 }
 
 func NewCapsAny() *Caps {
