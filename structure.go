@@ -9,6 +9,10 @@ import "unsafe"
 
 type Structure C.GstStructure
 
+func (s *Structure) g() *C.GstStructure {
+	return (*C.GstStructure)(s)
+}
+
 func (s *Structure) GetName() string {
 	str := (*C.char)(C.gst_structure_get_name(s.g()))
 	defer C.free(unsafe.Pointer(str))
