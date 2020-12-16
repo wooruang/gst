@@ -8,8 +8,10 @@ import "C"
 
 import (
 	"github.com/ziutek/glib"
-	"reflect"
 )
+
+//typedef gboolean        (*GstBusFunc)           (GstBus * bus, GstMessage * message, gpointer user_data);
+type BusFunc func(bus Bus, message Message, userData glib.Pointer) bool
 
 type Bus struct {
 	GstObj
@@ -80,13 +82,12 @@ func (b *Bus) RemoveSignalWatch() {
 	C.gst_bus_remove_signal_watch(b.g())
 }
 
-func (b *Bus) AddWatch(cbFunc, userData glib.Pointer) int {
-	cb := reflect.ValueOf(cbFunc)
-	if cb.Kind() != reflect.Func {
-		panic("cbFunc isn't a function")
+func (b *Bus) AddWatch(cb BusFunc, userData glib.Pointer) int {
+	//typedef gboolean        (*GstBusFunc)           (GstBus * bus, GstMessage * message, gpointer user_data);
+	cbFunc :=  func (bus *C.GstBus, message *C.GstMessage, userData *C.gpointer) C.gboolean {
+		return C.gboolean(cb(Bus{glib.Pointer(bus)}, Message(message), userData))
 	}
-
-	return int(C.gst_bus_add_watch(b.g(), cb, C.gpointer(userData)))
+	return int(C.gst_bus_add_watch(b.g(), C.GstBusFunc(cbFunc), C.gpointer(userData)))
 }
 
 func (b *Bus) Poll(events MessageType, timeout int64) *Message {
