@@ -86,7 +86,7 @@ func (b *Bus) AddWatch(cbFunc, userData glib.Pointer) int {
 		panic("cbFunc isn't a function")
 	}
 
-	return int(C.gst_bus_add_watch(b.g(), cb, userData))
+	return int(C.gst_bus_add_watch(b.g(), cb, C.gpointer(userData)))
 }
 
 func (b *Bus) Poll(events MessageType, timeout int64) *Message {
