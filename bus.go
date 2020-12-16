@@ -8,6 +8,7 @@ import "C"
 
 import (
 	"github.com/ziutek/glib"
+	"reflect"
 )
 
 type Bus struct {
@@ -79,7 +80,12 @@ func (b *Bus) RemoveSignalWatch() {
 	C.gst_bus_remove_signal_watch(b.g())
 }
 
-func (b *Bus) AddWatch(cb interface{}, userData glib.Pointer) int {
+func (b *Bus) AddWatch(cbFunc, userData glib.Pointer) int {
+	cb := reflect.ValueOf(cbFunc)
+	if cb.Kind() != reflect.Func {
+		panic("cbFunc isn't a function")
+	}
+
 	return int(C.gst_bus_add_watch(b.g(), cb, userData))
 }
 
