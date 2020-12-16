@@ -79,6 +79,10 @@ func (b *Bus) RemoveSignalWatch() {
 	C.gst_bus_remove_signal_watch(b.g())
 }
 
+func (b *Bus) AddWatch(cb interface{}, userData glib.Pointer) int {
+	return int(C.gst_bus_add_watch(b.g(), cb, userData))
+}
+
 func (b *Bus) Poll(events MessageType, timeout int64) *Message {
 	return (*Message)(C.gst_bus_poll(b.g(), C.GstMessageType(events),
 		C.GstClockTime(timeout)))
