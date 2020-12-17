@@ -156,3 +156,18 @@ func (m *Message) ParseError() (err *glib.Error, debug string) {
 	err = (*glib.Error)(unsafe.Pointer(ret_e))
 	return
 }
+
+func (m *Message) ParseWarning() (err *glib.Error, debug string) {
+	var d *C.gchar
+	var	e, ret_e *C.GError
+
+	C.gst_message_parse_warning(m.g(), &e, &d)
+	defer C.g_error_free(e)
+	defer C.free(unsafe.Pointer(d))
+
+	debug = C.GoString((*C.char)(d))
+	ret_e = new(C.GError)
+	*ret_e = *e
+	err = (*glib.Error)(unsafe.Pointer(ret_e))
+	return
+}
