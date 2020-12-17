@@ -8,10 +8,11 @@ import "C"
 
 import (
 	"github.com/ziutek/glib"
+	"unsafe"
 )
 
 //typedef gboolean        (*GstBusFunc)           (GstBus * bus, GstMessage * message, gpointer user_data);
-type BusFunc func(bus Bus, message Message, userData glib.Pointer) bool
+type BusFunc func(bus *Bus, message *Message, userData glib.Pointer) bool
 
 type Bus struct {
 	GstObj
@@ -82,12 +83,14 @@ func (b *Bus) RemoveSignalWatch() {
 	C.gst_bus_remove_signal_watch(b.g())
 }
 
-func (b *Bus) AddWatch(cb BusFunc, userData glib.Pointer) int {
-	//typedef gboolean        (*GstBusFunc)           (GstBus * bus, GstMessage * message, gpointer user_data);
-	cbFunc :=  func (bus *C.GstBus, message *C.GstMessage, userData *C.gpointer) C.gboolean {
-		return C.gboolean(cb(Bus{glib.Pointer(bus)}, Message(message), userData))
+func (b *Bus) AddWatch(cb BusFunc, userData glib.Pointer) uint {
+	cbFunc :=  func (bus *C.GstBus, message *C.GstMessage, userData C.gpointer) C.gboolean {
+		b := new(Bus)
+		bp := glib.Pointer(bus)
+		b.SetPtr(bp)
+		return C.gboolean(cb(b, (*Message)(message), glib.Pointer(userData)))
 	}
-	return int(C.gst_bus_add_watch(b.g(), C.GstBusFunc(cbFunc), C.gpointer(userData)))
+	return uint(C.gst_bus_add_watch(b.g(), C.GstBusFunc(unsafe.Pointer(&cbFunc)), C.gpointer(userData)))
 }
 
 func (b *Bus) Poll(events MessageType, timeout int64) *Message {
