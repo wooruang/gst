@@ -11,8 +11,10 @@ import (
 	"unsafe"
 )
 
+//typedef int    gint;
+//typedef gint   gboolean;
 //typedef gboolean        (*GstBusFunc)           (GstBus * bus, GstMessage * message, gpointer user_data);
-type BusFunc func(bus *Bus, message *Message, userData glib.Pointer) bool
+type BusFunc func(bus *Bus, message *Message, userData glib.Pointer) int
 
 type Bus struct {
 	GstObj
