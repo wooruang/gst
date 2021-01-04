@@ -3,11 +3,36 @@ package gst
 /*
 #include <stdlib.h>
 #include <gst/gst.h>
+
+typedef struct PadAddedData {
+  unsigned int signalElementPadAddedId;
+  gpointer data;
+} t_PadAddedData;
+
+static t_PadAddedData * makePadAddedData(unsigned int id, gpointer data) {
+	t_PadAddedData * ret = malloc(sizeof(t_PadAddedData));
+	ret->signalElementPadAddedId = id;
+	ret->data = data;
+	return ret;
+}
+
+//void deletePadAddedData(t_PadAddedData * data) {
+//	free(data->data);
+//	free(data);
+//}
+
+void element_padAddedHandler(GstElement * element, GstPad * pad, gpointer data);
+
+static gulong Element_signal_connect_pad_added(gpointer instance, gpointer data) {
+	return g_signal_connect(instance, "pad-added", G_CALLBACK(element_padAddedHandler), data);
+}
+
 */
 import "C"
 
 import (
 	"github.com/ziutek/glib"
+	"sync"
 	"unsafe"
 )
 
@@ -49,6 +74,7 @@ const (
 	STATE_CHANGE_ASYNC      = StateChangeReturn(C.GST_STATE_CHANGE_ASYNC)
 	STATE_CHANGE_NO_PREROLL = StateChangeReturn(C.GST_STATE_CHANGE_NO_PREROLL)
 )
+
 
 type Element struct {
 	GstObj
@@ -147,6 +173,76 @@ func (e *Element) GetBus() *Bus {
 	b := new(Bus)
 	b.SetPtr(glib.Pointer(bus))
 	return b
+}
+
+
+type signalElementPadAddedDetail struct {
+	callback  ElementPadAddedCallback
+	handlerID C.gulong
+}
+
+var signalElementPadAddedId int
+var signalElementPadAddedMap = make(map[int]signalElementPadAddedDetail)
+var signalElementPadAddedLock sync.RWMutex
+
+// ElementPadAddedCallback is a callback function for a 'pad-added' signal emitted from a Selection.
+type ElementPadAddedCallback func(element *Element, srcPad *Pad, data glib.Pointer)
+
+/*
+ConnectPadAdded connects the callback to the 'pad-added' signal for the Selection.
+The returned value represents the connection, and may be passed to DisconnectPadAdded to remove it.
+*/
+func (e *Element) ConnectPadAdded(callback ElementPadAddedCallback, data glib.Pointer) int {
+	signalElementPadAddedLock.Lock()
+	defer signalElementPadAddedLock.Unlock()
+
+	signalElementPadAddedId++
+
+	d := C.makePadAddedData(C.uint(signalElementPadAddedId), C.gpointer(data))
+
+	instance := e.g()
+	handlerID := C.Element_signal_connect_pad_added(C.gpointer(instance), C.gpointer(d))
+
+	detail := signalElementPadAddedDetail{callback, handlerID}
+	signalElementPadAddedMap[signalElementPadAddedId] = detail
+
+	return signalElementPadAddedId
+}
+
+/*
+DisconnectPadAdded disconnects a callback from the 'pad-added' signal for the Selection.
+The connectionID should be a value returned from a call to ConnectPadAdded.
+*/
+func (e *Element) DisconnectPadAdded(connectionID int) {
+	signalElementPadAddedLock.Lock()
+	defer signalElementPadAddedLock.Unlock()
+
+	detail, exists := signalElementPadAddedMap[connectionID]
+	if !exists {
+		return
+	}
+
+	instance := e.g()
+	C.g_signal_handler_disconnect(C.gpointer(instance), detail.handlerID)
+	delete(signalElementPadAddedMap, connectionID)
+}
+
+//export element_padAddedHandler
+func element_padAddedHandler(element *C.GstElement, pad *C.GstPad, data C.gpointer) {
+	signalElementPadAddedLock.RLock()
+	defer signalElementPadAddedLock.RUnlock()
+
+	e := new(Element)
+	e.SetPtr(glib.Pointer(element))
+
+	p := new(Pad)
+	p.SetPtr(glib.Pointer(pad))
+
+	d := (*C.t_PadAddedData)(data)
+
+	index := int(d.signalElementPadAddedId)
+	callback := signalElementPadAddedMap[index].callback
+	callback(e, p, glib.Pointer(d.data))
 }
 
 // TODO: Move ElementFactoryMake to element_factory.go
